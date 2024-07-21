@@ -5882,7 +5882,7 @@ local set_edition_ref = Card.set_edition
 function Card.set_edition(self, edition, immediate, silent)
     set_edition_ref(self, edition, immediate, silent)
     if G.jokers then
-        if not self.added_to_deck and self.ability.set == "Joker" and (self.edition == nil or not edition.negative) then
+        if not self.added_to_deck and self.ability.set == "Joker" and (self.edition == nil or (type(edition) == 'table' and not edition.negative or edition ~= 'e_negative')) then
             if next(find_joker("MMC Cicero")) then
                 local support = true
                 for _, v in ipairs(G.localization.descriptions.Joker[self.config.center.key].text) do

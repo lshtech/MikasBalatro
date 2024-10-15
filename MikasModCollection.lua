@@ -9,26 +9,55 @@
 ----------------------------------------------
 ------------MOD CODE -------------------------
 
-local letters = { "a", "b", "c", "d", "e", "é", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s",
-    "t", "u", "v", "w", "x", "y", "z" }
+-- TODO: Fishing License, Harp Seal, Buy One Get One -- increase mod compat
 
-local enhancements = {
-    G.P_CENTERS.m_bonus,
-    G.P_CENTERS.m_mult,
-    G.P_CENTERS.m_wild,
-    G.P_CENTERS.m_glass,
-    G.P_CENTERS.m_steel,
-    G.P_CENTERS.m_stone,
-    G.P_CENTERS.m_gold,
-    G.P_CENTERS.m_lucky
-}
+function SMODS.poll_enhancement(args)
+    args = args or {}
+    local key = args.key or 'stdenhance'
+    local mod = args.mod or 1
+    local guaranteed = args.guaranteed or false
+    local options = args.options or get_current_pool("Enhanced")
+    local type_key = args.type_key or key.."type"..G.GAME.round_resets.ante
+    key = key..G.GAME.round_resets.ante
 
-local seals = {
-    "Gold",
-    "Red",
-    "Blue",
-    "Purple"
-}
+    local available_enhancements = {}
+    local total_weight = 0
+    for _, v in ipairs(options) do
+        if v ~= "UNAVAILABLE" then
+            local enhanced_option = {}
+            if type(v) == 'string' then
+                assert(G.P_CENTERS[v])
+                enhanced_option = { name = v, weight = G.P_CENTERS[v].weight or 5 } -- default weight set to 5 to replicate base game weighting
+            elseif type(v) == 'table' then
+                assert(G.P_CENTERS[v.name])
+                enhanced_option = { name = v.name, weight = v.weight }
+            end
+            if enhanced_option.weight > 0 then
+                table.insert(available_enhancements, enhanced_option)
+                total_weight = total_weight + enhanced_option.weight
+            end
+        end
+	end
+    total_weight = total_weight + (total_weight / 2 * 98) -- set base rate to 2%
+
+    local type_weight = 0 -- modified weight total
+    for _,v in ipairs(available_enhancements) do
+        v.weight = G.P_CENTERS[v.name].get_weight and G.P_CENTERS[v.name]:get_weight() or v.weight
+        type_weight = type_weight + v.weight
+    end
+
+    local enhanced_poll = pseudorandom(pseudoseed(key or 'stdenhance'..G.GAME.round_resets.ante))
+    if enhanced_poll > 1 - (type_weight*mod / total_weight) or guaranteed then -- is an enhancement generated
+        local enhanced_type_poll = pseudorandom(pseudoseed(type_key)) -- which enhancement is generated
+        local weight_i = 0
+        for _, v in ipairs(available_enhancements) do
+            weight_i = weight_i + v.weight
+            if enhanced_type_poll > 1 - (weight_i / type_weight) then
+                return v.name
+            end
+        end
+    end
+end
 
 local dagonet_blacklist = {
     "Credit Card",
@@ -336,8 +365,11 @@ local prime_time = SMODS.Joker{
 	calculate = function(self, card, context)
         -- For each played card, if card is prime, add xmult
         if context.individual and context.cardarea == G.play and
-            (context.other_card:get_id() == 2 or context.other_card:get_id() == 3 or context.other_card:get_id() ==
-                5 or context.other_card:get_id() == 7 or context.other_card:get_id() == 14) then
+            (context.other_card:get_id() == 2 or
+             context.other_card:get_id() == 3 or
+             context.other_card:get_id() == 5 or
+             context.other_card:get_id() == 7 or
+             context.other_card:get_id() == 14) then
             return {
                 message = localize {
                     type = "variable",
@@ -386,27 +418,11 @@ local straight_nate = SMODS.Joker{
 		return { vars = { center.ability.extra.Xmult, center.ability.extra.j_slots } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.poker_hands then
+        if context.joker_main then
             -- If hand played is a straight
             if next(context.poker_hands["Straight"]) then
-                -- Check for Todd and Steven Jokers
-                local todd = false;
-                local steven = false;
-                for _, v in pairs(G.jokers.cards) do
-                    if v.ability.name == "Odd Todd" then
-                        todd = true
-                    end
-                    if v.ability.name == "Even Steven" then
-                        steven = true
-                    end
-                    if v.ability.name == "Dynamic Duo" then
-                        todd = true
-                        steven = true
-                    end
-                end
-
                 -- Add xmult
-                if todd and steven then
+                if (next(find_joker("Odd Todd")) and next(find_joker("Even Steven"))) or next(find_joker("Dynamic Duo")) then
                     return {
                         message = localize {
                             type = "variable",
@@ -425,6 +441,12 @@ local straight_nate = SMODS.Joker{
     remove_from_deck = function(self, card, from_debuff)
         G.jokers.config.card_limit = G.jokers.config.card_limit - card.ability.extra.j_slots
     end,
+    in_pool = function (self)
+        if next(find_joker("Odd Todd")) or next(find_joker("Even Steven")) or next(find_joker("Dynamic Duo")) then
+            return true
+        end
+        return false
+    end
 }
 
 SMODS.Atlas{
@@ -449,7 +471,7 @@ local fisherman = SMODS.Joker{
             "{C:attention}+#2#{} hand size per discard",
             "{C:attention}-#2#{} hand size per hand played",
             "Resets every round",
-            "{C:inactive}(Currently {C:attention}+#1#{C:inactive} hand size)"
+            "{C:inactive}(Currently {C:attention}#3##1#{C:inactive} hand size)"
         }
 	},
 	rarity = 2,
@@ -459,20 +481,23 @@ local fisherman = SMODS.Joker{
 	blueprint_compat = true,
 	atlas = "fisherman",
 	loc_vars = function(self, info_queue, center)
-		return { vars = { center.ability.extra.current_h_size, center.ability.extra.h_mod } }
+        local modifier = ""
+        if center.ability.extra.current_h_size >= 0 then
+            modifier = "+"
+        end
+		return { vars = { center.ability.extra.current_h_size, center.ability.extra.h_mod, modifier} }
 	end,
 	calculate = function(self, card, context)
         -- Decrease hand size
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
-            if card.ability.extra.current_h_size > 0 then
-                card.ability.extra.current_h_size = math.max(0, card.ability.extra.current_h_size -
-                card.ability.extra.h_mod)
-                G.hand:change_size(-card.ability.extra.h_mod)
-                -- Decrease message
-                card_eval_status_text(card, "extra", nil, nil, nil, {
-                    message = localize("k_mmc_hand_down")
-                })
-            end
+        if context.joker_main then
+ --         if card.ability.extra.current_h_size > 0 then
+            card.ability.extra.current_h_size = card.ability.extra.current_h_size - card.ability.extra.h_mod
+            G.hand:change_size(-card.ability.extra.h_mod)
+            -- Decrease message
+            card_eval_status_text(card, "extra", nil, nil, nil, {
+                message = localize("k_mmc_hand_down")
+            })
+--          end
         end
 
         -- Increase hand size
@@ -515,11 +540,11 @@ SMODS.Atlas{
 local impatient = SMODS.Joker{
 	name = "impatient",
 	key = "impatient",
-	config = { 
+	config = {
         extra = {
             mult_mod = 3,
             current_mult = 0
-        } 
+        }
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
@@ -541,7 +566,7 @@ local impatient = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply mult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_mult > 0 then
                 return {
                     message = localize {
@@ -625,7 +650,7 @@ local cultist = SMODS.Joker{
         end
 
         -- Apply xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.old > 1 then
                 return {
                     message = localize {
@@ -661,7 +686,7 @@ SMODS.Atlas{
 local seal_collector = SMODS.Joker{
 	name = "seal_collector",
 	key = "seal_collector",
-	config = { 
+	config = {
         extra = {
             current_chips = 25,
             chip_mod = 25
@@ -687,7 +712,7 @@ local seal_collector = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply chips
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             return {
                 message = localize {
                     type = "variable",
@@ -722,7 +747,7 @@ SMODS.Atlas{
 local camper = SMODS.Joker{
 	name = "camper",
 	key = "camper",
-	config = { 
+	config = {
         extra = {
             chip_mod = 4
         }
@@ -769,7 +794,7 @@ SMODS.Atlas{
 local scratch_card = SMODS.Joker{
 	name = "scratch_card",
 	key = "scratch_card",
-	config = { 
+	config = {
         extra = {
             base = 1,
             dollars = 0,
@@ -810,7 +835,7 @@ local scratch_card = SMODS.Joker{
                 card.ability.extra.seven_tally = card.ability.extra.seven_tally + 1
         end
 
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Set dollars depending on amount of 7s
             if card.ability.extra.seven_tally == 1 then
                 card.ability.extra.dollars = card.ability.extra.base
@@ -878,13 +903,13 @@ local delayed = SMODS.Joker{
 	blueprint_compat = true,
 	atlas = "delayed",
 	loc_vars = function(self, info_queue, center)
-		return { vars = { 
+		return { vars = {
             center.ability.extra.mult,
             center.ability.extra.chips,
             center.ability.extra.Xmult,
             center.ability.extra.action_tally,
-            center.ability.extra.every 
-        } 
+            center.ability.extra.every
+        }
     }
 	end,
 	calculate = function(self, card, context)
@@ -894,7 +919,7 @@ local delayed = SMODS.Joker{
         end
 
         -- Apply mult, chips and xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.action_tally == card.ability.extra.every + 1 then
                 return {
                     -- Return bonus message and apply bonus
@@ -978,7 +1003,7 @@ local showoff = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_Xmult > 1 then
                 return {
                     message = localize {
@@ -1052,7 +1077,7 @@ local sniper = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_Xmult > 1 then
                 return {
                     message = localize {
@@ -1158,7 +1183,7 @@ local blackjack = SMODS.Joker{
         end
 
         -- When hand is played
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- For every rank_tally, check if we got 21
             local Xmult = 1
             for _, v in ipairs(card.ability.extra.rank_tally) do
@@ -1230,7 +1255,7 @@ local batman = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- When hand is played
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Apply mult
             return {
                 message = localize {
@@ -1308,7 +1333,7 @@ local bomb = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply mult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             return {
                 message = localize {
                     type = "variable",
@@ -1356,7 +1381,7 @@ local eye_chart = SMODS.Joker{
 	config = {
         extra = {
             chips = 20,
-            letter = "A"
+            letter = ""
         }
     },
 	pos = { x = 0, y = 0 },
@@ -1366,7 +1391,7 @@ local eye_chart = SMODS.Joker{
             "Gives {C:chips}+#1#{} Chips for every",
             "letter {C:attention}\"#2#\"{} in your Jokers",
             "Letter changes when this",
-            "Joker appears in the shop",
+            "Joker first appears",
             "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy" 
         }
 	},
@@ -1377,6 +1402,11 @@ local eye_chart = SMODS.Joker{
 	blueprint_compat = true,
 	atlas = "eye_chart",
 	loc_vars = function(self, info_queue, center)
+        if center.ability.extra.letter == "" then
+            local letters = { "a", "b", "c", "d", "e", "é", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s",
+                "t", "u", "v", "w", "x", "y", "z" }
+            center.ability.extra.letter = string.upper(pseudorandom_element(letters, pseudoseed("eye_chart")))
+        end
 		return { vars = { center.ability.extra.chips, center.ability.extra.letter } }
 	end,
 	calculate = function(self, card, context)
@@ -1458,7 +1488,7 @@ local grudgeful = SMODS.Joker{
         end
 
         -- Apply chips
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_chips > 0 then
                 card_eval_status_text(card, "extra", nil, nil, nil, {
                     message = localize {
@@ -1560,8 +1590,8 @@ local finishing_blow = SMODS.Joker{
             if card.ability.extra.high_card then
                 for _, v in ipairs(card.ability.extra.card_refs) do
                     if type(v) == 'table' then
-                        local enhancement = pseudorandom_element(enhancements, pseudoseed("finishing_blow"))
-                        v:set_ability(enhancement, nil, true)
+                        local enhancement = SMODS.poll_enhancement({key = "finishing_blow", guaranteed = true})
+                        v:set_ability(G.P_CENTERS[enhancement])
                         card_eval_status_text(card, "extra", nil, nil, nil, {
                             message = localize("k_upgrade_ex"),
                             delay = 0.45
@@ -1603,6 +1633,7 @@ local aurora_borealis = SMODS.Joker{
 	loc_vars = function(self, info_queue, center)
 		return { vars = { } }
 	end,
+    
 }
 
 SMODS.Atlas{
@@ -1659,7 +1690,7 @@ local historical = SMODS.Joker{
         end
 
         -- Apply chips if previous cards are the same as the current cards
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if table.concat(card.ability.extra.prev_cards) == table.concat(card.ability.extra.current_cards) then
                 card_eval_status_text(card, "extra", nil, nil, nil, {
                     message = localize {
@@ -1900,7 +1931,7 @@ local training_wheels = SMODS.Joker{
         end
 
         -- Apply xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_Xmult > 1 then
                 return {
                     message = localize {
@@ -1995,7 +2026,7 @@ local incomplete = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Check if hand is less than 3 cards, then apply chips
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             if #context.full_hand <= card.ability.extra.req then
                 return {
                     message = localize {
@@ -2009,29 +2040,17 @@ local incomplete = SMODS.Joker{
         end
 	end,
     add_to_deck = function(self, card, from_debuff)
-        -- Check for Glue  Joker
-        for _, v in pairs(G.jokers.cards) do
-            if v.ability.name == "glue" then
-                -- Update Glue variables
-                v.ability.extra.incomplete = true
-                if v.ability.extra.half then
-                    v.ability.extra.triggered = true
-                    G.jokers.config.card_limit = G.jokers.config.card_limit + v.ability.extra.j_slots
-                end
-            end
+        if next(find_joker("glue")) and next(find_joker("Half Joker")) then
+            local glue = find_joker("glue")[1]
+            glue.ability.extra.triggered = true
+            G.jokers.config.card_limit = G.jokers.config.card_limit + glue.ability.extra.j_slots
         end
     end,
     remove_from_deck = function(self, card, from_debuff)
-        -- Check for Glue Joker
-        for _, v in pairs(G.jokers.cards) do
-            if v.ability.name == "glue" then
-                -- Reset Glue variables
-                v.ability.extra.incomplete = false
-                if v.ability.extra.triggered then
-                    v.ability.extra.triggered = false
-                    G.jokers.config.card_limit = G.jokers.config.card_limit - v.ability.extra.j_slots
-                end
-            end
+        if next(find_joker("glue")) and next(find_joker("Half Joker")) then
+            local glue = find_joker("glue")[1]
+            glue.ability.extra.triggered = false
+            G.jokers.config.card_limit = G.jokers.config.card_limit - glue.ability.extra.j_slots
         end
     end
 }
@@ -2100,7 +2119,7 @@ local abbey_road = SMODS.Joker{
         end
 
         -- Apply Xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.should_trigger then
                 return {
                     message = localize {
@@ -2146,8 +2165,8 @@ local fishing_license = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         if context.individual and context.cardarea == G.play then
-            if context.other_card.ability.effect == "Bonus Card" or context.other_card.ability.effect ==
-                "Stone Card" then
+            if context.other_card.ability.effect == "Bonus Card" or
+               context.other_card.ability.effect == "Stone Card" then
                 return {
                     message = localize {
                         type = "variable",
@@ -2307,7 +2326,7 @@ local rigged = SMODS.Joker{
         end
 
         -- Increase probabilities and reset has_triggered
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.has_triggered then
                 card_eval_status_text(card, "extra", nil, nil, nil, {
                     message = localize("k_mmc_luck"),
@@ -2396,7 +2415,8 @@ local commander = SMODS.Joker{
                                 _card:juice_up(0.3, 0.5)
                                 -- Add seal and edition
                                 if _card.ability.seal == nil then
-                                    _card:set_seal(pseudorandom_element(seals, pseudoseed("commander")), nil, true)
+                                    local seal = SMODS.poll_seal({key = "commander", guaranteed = true})
+                                    _card:set_seal(seal)
                                 end
                                 if _card.edition == nil then
                                     local edition = poll_edition("commander", nil, true, true)
@@ -2408,7 +2428,8 @@ local commander = SMODS.Joker{
 
                         -- Add enhancement, outside of animate because this has a delay for some reason
                         if _card.ability.effect == "Base" then
-                            _card:set_ability(pseudorandom_element(enhancements, pseudoseed("commander")), nil, true)
+                            local enhancement = SMODS.poll_enhancement({key = "commander", guaranteed = true})
+                            _card:set_ability(G.P_CENTERS[enhancement])
                         end
 
                         -- Return message
@@ -2467,7 +2488,7 @@ local blue_moon = SMODS.Joker{
         end
 
         -- Check for 5 lucky triggers
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.lucky_tally >= card.ability.extra.req then
                 -- Create new negative Joker
                 G.E_MANAGER:add_event(Event({
@@ -2597,8 +2618,6 @@ local glue = SMODS.Joker{
         extra = {
             Xmult = 5,
             j_slots = 2,
-            half = false,
-            incomplete = false,
             triggered = false
         }
     },
@@ -2622,9 +2641,9 @@ local glue = SMODS.Joker{
 		return { vars = { center.ability.extra.Xmult, center.ability.extra.j_slots } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Add xmult if we have both Half and Incomplete Joker
-            if card.ability.extra.half and card.ability.extra.incomplete then
+            if next(find_joker("Half Joker")) and next(find_joker("incomplete")) then
                 return {
                     message = localize {
                         type = "variable",
@@ -2637,17 +2656,8 @@ local glue = SMODS.Joker{
         end
 	end,
     add_to_deck = function(self, card, from_debuff)
-        -- Check for Half and Incomplete Jokers
-        for _, v in pairs(G.jokers.cards) do
-            if v.ability.name == "Half Joker" then
-                card.ability.extra.half = true
-            end
-            if v.ability.name == "incomplete" then
-                card.ability.extra.incomplete = true
-            end
-        end
         -- Update Glue Variables
-        if card.ability.extra.half and card.ability.extra.incomplete then
+        if next(find_joker("Half Joker")) and next(find_joker("incomplete")) then
             card.ability.extra.triggered = true
             G.jokers.config.card_limit = G.jokers.config.card_limit + card.ability.extra.j_slots
         end
@@ -2658,34 +2668,30 @@ local glue = SMODS.Joker{
             card.ability.extra.triggered = false
             G.jokers.config.card_limit = G.jokers.config.card_limit - card.ability.extra.j_slots
         end
+    end,
+    in_pool = function (self)
+        if next(find_joker("incomplete")) or next(find_joker("Half Joker")) then
+            return true
+        end
+        return false
     end
 }
 
 SMODS.Joker:take_ownership('j_half', {
     add_to_deck = function(self, card, from_debuff)
         -- Check for Glue Joker
-        for _, v in pairs(G.jokers.cards) do
-            if v.ability.name == "glue" then
-                -- Update Glue variables
-                v.ability.extra.half = true
-                if v.ability.extra.incomplete then
-                    v.ability.extra.triggered = true
-                    G.jokers.config.card_limit = G.jokers.config.card_limit + v.ability.extra.j_slots
-                end
-            end
+        if next(find_joker("glue")) and next(find_joker("incomplete")) then
+            local glue = find_joker("glue")[1]
+            glue.ability.extra.triggered = true
+            G.jokers.config.card_limit = G.jokers.config.card_limit + glue.ability.extra.j_slots
         end
     end,
     remove_from_deck = function(self, card, from_debuff)
         -- Check for Glue Joker
-        for _, v in pairs(G.jokers.cards) do
-            if v.ability.name == "glue" then
-                -- Reset Glue variables
-                v.ability.extra.half = false
-                if v.ability.extra.triggered then
-                    v.ability.extra.triggered = false
-                    G.jokers.config.card_limit = G.jokers.config.card_limit - v.ability.extra.j_slots
-                end
-            end
+        if next(find_joker("glue")) and next(find_joker("incomplete")) then
+            local glue = find_joker("glue")[1]
+            glue.ability.extra.triggered = false
+            G.jokers.config.card_limit = G.jokers.config.card_limit - glue.ability.extra.j_slots
         end
     end
 }, true)
@@ -2864,7 +2870,7 @@ local special_edition = SMODS.Joker{
          } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_mult > 0 or card.ability.extra.current_chips > 0 or
             card.ability.extra.current_Xmult > 1 then
                 return {
@@ -3079,7 +3085,7 @@ local broke = SMODS.Joker{
          } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Apply mult
             if card.ability.extra.current_mult > 0 then
                 return {
@@ -3176,14 +3182,14 @@ local go_for_broke = SMODS.Joker{
 	blueprint_compat = true,
 	atlas = "go_for_broke",
 	loc_vars = function(self, info_queue, center)
-		return { vars = { 
+		return { vars = {
             center.ability.extra.chip_mod,
             center.ability.extra.current_chips,
             center.ability.extra.every
          } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Apply chips
             if card.ability.extra.current_chips > 0 then
                 return {
@@ -3284,7 +3290,7 @@ local street_fighter = SMODS.Joker{
 		return { vars = { center.ability.extra.Xmult, center.ability.extra.req } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Apply xmult if balance is below negative requirement
             if G.GAME.dollars <= -1 * card.ability.extra.req then
                 return {
@@ -3405,7 +3411,7 @@ local one_of_us = SMODS.Joker{
 		return { vars = { center.ability.extra.req } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             -- Count enhanced cards
             local enhanced_tally = 0
             for _, v in ipairs(context.full_hand) do
@@ -3581,7 +3587,7 @@ local shackles = SMODS.Joker{
          } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             -- Destroy if more cards than required are played
             if #context.full_hand > card.ability.extra.req then
                 G.E_MANAGER:add_event(Event({
@@ -4054,7 +4060,7 @@ local glass_cannon = SMODS.Joker{
         end
 
         -- Destroy played glass cards
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             for _, v in ipairs(context.full_hand) do
                 if v.played then
                     G.E_MANAGER:add_event(Event({
@@ -4121,7 +4127,7 @@ local scoring_test = SMODS.Joker{
 		return { vars = { center.ability.extra.percentage } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             -- Get played hand
             card.ability.extra.played_hand = {}
             for _, v in ipairs(context.full_hand) do
@@ -4298,7 +4304,7 @@ local savings = SMODS.Joker{
         end
 
         -- Apply mult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_mult > 0 then
                 return {
                     message = localize {
@@ -4371,7 +4377,7 @@ local monopolist = SMODS.Joker{
 	end,
 	calculate = function(self, card, context)
         -- Apply xmult
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             if card.ability.extra.current_Xmult > 1 then
                 return {
                     message = localize {
@@ -4463,7 +4469,7 @@ local nebula = SMODS.Joker{
 		return { vars = { center.ability.extra.req } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) then
+        if context.joker_main then
             -- Get level of all hands
             local _tally = 0
             for _, v in ipairs(G.handlist) do
@@ -4570,7 +4576,7 @@ local psychic = SMODS.Joker{
 		return { vars = { center.ability.extra.chips, center.ability.extra.req } }
 	end,
 	calculate = function(self, card, context)
-        if SMODS.end_calculate_context and SMODS.end_calculate_context(context) and context.full_hand then
+        if context.joker_main and context.full_hand then
             -- Destroy if less cards than required are played
             if #context.full_hand < card.ability.extra.req then
                 G.E_MANAGER:add_event(Event({
@@ -5118,6 +5124,9 @@ SMODS.Back {
     name = "Jokers for Hire",
     --atlas = "decks",
     pos = {x = 6, y = 0},
+    config = {
+        mmc_for_hire = true
+    },
     apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
@@ -5126,7 +5135,6 @@ SMODS.Back {
 
                 -- Add effect to starting params
                 G.GAME.starting_params.mmc_for_hire = true
-                print(G.GAME.starting_params.mmc_for_hire)
                 -- Reset counter
                 for_hire_counter = 1
                 return true
@@ -5223,7 +5231,6 @@ end
 -- Handle card addition/removing
 local add_to_deckref = Card.add_to_deck
 function Card:add_to_deck(from_debuff)
-    print(tostring(G.GAME.starting_params.mmc_for_hire))
     if G.GAME.starting_params.mmc_for_hire and self.ability.set == "Joker" then
         -- Add Joker slot and increment counter
         G.jokers.config.card_limit = G.jokers.config.card_limit + 1
@@ -5247,16 +5254,11 @@ end
 local set_costref = Card.set_cost
 function Card:set_cost()
     set_costref(self)
-
-    if self.ability.name == "eye_chart" and not self.added_to_deck then
-        -- Generate new letter
-        self.ability.extra.letter = string.upper(pseudorandom_element(letters, pseudoseed("eye_chart")))
-    end
-    
+    print(type(G.GAME.starting_params.mmc_for_hire) .. " | " .. tostring(G.GAME.starting_params.mmc_for_hire))
     if G.GAME.starting_params.mmc_for_hire and
         (self.ability.set == "Joker" or string.find(self.ability.name, "Buffoon")) then
         -- Multiply cost linearly with counter
-        
+
         self.cost = self.cost * for_hire_counter
 
         if self.ability.name == "Riff-raff" then
@@ -5336,17 +5338,10 @@ end
 
 local get_chip_mult_ref = Card.get_chip_mult
 function Card:get_chip_mult()
-    if self.ability.perma_mult and self.ability.name ~= "Lucky Card" then
+    if not SMODS.Mods["BetmmaSpells"] and self.ability.perma_mult then
         return self.ability.mult + self.ability.perma_mult
     end
     return get_chip_mult_ref(self)
-end
-
-local loc_colour_ref = loc_colour
-function loc_colour(_c, _default)
-    loc_colour_ref(_c, _default)
-    G.ARGS.LOC_COLOURS["mikas"] = HEX("FD5DA8")
-    return G.ARGS.LOC_COLOURS[_c] or _default or G.C.UI.TEXT_DARK
 end
 
 ----------------------------------------------

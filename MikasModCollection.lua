@@ -1,11 +1,11 @@
 --- STEAMODDED HEADER
 --- MOD_NAME: Mika's Mod Collection
 --- MOD_ID: MikasMods
+--- PREFIX: mika
 --- MOD_AUTHOR: [Mikadoe, elbe]
 --- MOD_DESCRIPTION: A collection of Mika's Mods. Check the mod description on GitHub for more information :)
 --- DISPLAY_NAME: Mika's Mod
 --- BADGE_COLOUR: FD5DA8
---- PREFIX: mmc
 ----------------------------------------------
 ------------MOD CODE -------------------------
 
@@ -4710,84 +4710,192 @@ local plus_one = SMODS.Joker{
 	end,
 }
 
-
-
--- Config: DISABLE UNWANTED MODS HERE
-local config = {
-    -- Decks
-    evenStevenDeck = true,
-    oddToddDeck = true,
-    fibonacciDeck = true,
-    primeDeck = true, -- Do not enable without primeTimeJoker
-    midasDeck = true,
-    jokersForHireDeck = true,
-    perfectPrecisionDeck = true, -- Do not enable without sniperJoker
-    -- Tarot Cards
-    aceOfPentaclesTarot = true,
-    pageOfPentaclesTarot = true,
-    -- Spectral Cards
-    incenseSpectral = true,
+SMODS.Atlas{
+	key = "incense",
+	path = "c_mmc_incense.png",
+	px = 71,
+	py = 95,
+}
+local incense = SMODS.Consumable{
+    key = 'incense',
+    set = 'Spectral',
+    pos = {
+        x = 0,
+        y = 0,
+    },
+    config = { extra = { dollars = 50, j_slots = 1, increase = 25 } },
+    atlas = 'incense',
+    loc_txt = {
+        name = "Incense",
+        text = {
+            "Add {C:dark_edition}Negative{} to",
+            "a random {C:attention}Joker{},",
+            "{C:red}-$#1#{}, ignores",
+            "spending limit",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
+        }
+    },
+    cost = 4,
+    unlocked = true,
+    discovered = false,
+    loc_vars = function(self, info_queue, card)
+        return  {vars = { G.GAME.mmc_incense_cost or card.ability.extra.dollars, card.ability.extra.j_slots }}
+    end,
+    can_use = function(self, card)
+        for _, v in pairs(G.jokers.cards) do
+            if v.ability.set == "Joker" and (not v.edition) then
+                return true
+            end
+        end
+        return false
+    end,
+    use = function(self, card, area, copier)
+        -- Get cost
+        G.GAME.mmc_incense_cost = G.GAME.mmc_incense_cost or card.ability.extra.dollars
+        -- Get editionless Jokers
+        local editionless_jokers = {}
+        for _, v in pairs(G.jokers.cards) do
+            if v.ability.set == "Joker" and (not v.edition) then
+                table.insert(editionless_jokers, v)
+            end
+        end
+        -- Add negative to random Joker
+        if #editionless_jokers > 0 then
+            G.E_MANAGER:add_event(Event({
+                trigger = "after",
+                delay = 0.4,
+                func = function()
+                    -- Set joker edition
+                    local joker = pseudorandom_element(editionless_jokers, pseudoseed("incense"))
+                    ease_dollars(-G.GAME.mmc_incense_cost)
+                    card:juice_up(0.3, 0.5)
+                    joker:set_edition({ negative = true }, true)
+                    -- Change Cost
+                    G.GAME.mmc_incense_cost = G.GAME.mmc_incense_cost + card.ability.extra.increase
+                    return true
+                end
+            }))
+        end
+        delay(0.6)
+    end,
 }
 
-local function init_tarot(tarot, no_sprite)
-    no_sprite = no_sprite or false
-
-    local new_tarot = SMODS.Tarot:new(
-        tarot.name,
-        tarot.slug,
-        tarot.config,
-        { x = 0, y = 0 },
-        tarot.loc,
-        tarot.cost,
-        tarot.cost_mult,
-        tarot.effect,
-        tarot.consumeable,
-        tarot.discovered,
-        tarot.atlas
-    )
-    new_tarot:register()
-
-    if not no_sprite then
-        local sprite = SMODS.Sprite:new(
-            new_tarot.slug,
-            SMODS.findModByID("MikasMods").path,
-            new_tarot.slug .. ".png",
-            71,
-            95,
-            "asset_atli"
-        )
-        sprite:register()
+SMODS.Atlas{
+	key = "ace_of_pentacles",
+	path = "c_mmc_ace_of_pentacles.png",
+	px = 71,
+	py = 95,
+}
+local ace_of_pentacles = SMODS.Consumable{
+    key = "ace_of_pentacles",
+    set = "Tarot",
+    config = { extra = { odds = 4 } },
+    pos = {
+        x = 0,
+        y = 0,
+    },
+    cost = 4,
+    atlas = "ace_of_pentacles",
+    loc_txt = {
+        name = "Ace Of Pentacles",
+        text = {
+            "{C:red}#2# in #1#{} chance",
+            "to set money to",
+            "{C:money}$0{}, otherwise",
+            "{C:attention}double{} your money",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
+        }
+    },
+    unlocked = true,
+    discovered = false,
+    loc_vars = function(self, info_queue, card)
+        return {vars = { card.ability.extra.odds, "" .. (G.GAME and G.GAME.probabilities.normal or 1) }}
+    end,
+    can_use = function(self, card)
+        return true
+    end,
+    use = function(self, card, area, copier)
+        if pseudorandom("ace_of_pentacles") < G.GAME.probabilities.normal / card.ability.extra.odds then
+            -- Nope!
+            G.E_MANAGER:add_event(Event({
+                trigger = "after",
+                delay = 0.4,
+                func = function()
+                    attention_text({
+                        text = localize("k_nope_ex"),
+                        scale = 1.3,
+                        hold = 1.4,
+                        major = card,
+                        backdrop_colour = G.C.SECONDARY_SET.Tarot,
+                        align = (G.STATE == G.STATES.TAROT_PACK or G.STATE == G.STATES.SPECTRAL_PACK) and "tm" or
+                            "cm",
+                        offset = { x = 0, y = (G.STATE == G.STATES.TAROT_PACK or G.STATE == G.STATES.SPECTRAL_PACK) and -0.2 or 0 },
+                        silent = true
+                    })
+                    G.E_MANAGER:add_event(Event({
+                        trigger = "after",
+                        delay = 0.06 * G.SETTINGS.GAMESPEED,
+                        blockable = false,
+                        blocking = false,
+                        func = function()
+                            play_sound("tarot2", 0.76, 0.4); return true
+                        end
+                    }))
+                    play_sound("tarot2", 1, 0.4)
+                    card:juice_up(0.3, 0.5)
+                    ease_dollars(-G.GAME.dollars)
+                    return true
+                end
+            }))
+            delay(0.6)
+        else
+            -- Double money
+            delay(0.6)
+            ease_dollars(G.GAME.dollars)
+        end
     end
-end
+}
 
-local function init_spectral(spectral, no_sprite)
-    no_sprite = no_sprite or false
-
-    local new_spectral = SMODS.Spectral:new(
-        spectral.name,
-        spectral.slug,
-        spectral.config,
-        { x = 0, y = 0 },
-        spectral.loc,
-        spectral.cost,
-        spectral.consumeable,
-        spectral.discovered,
-        spectral.atlas
-    )
-    new_spectral:register()
-
-    if not no_sprite then
-        local sprite = SMODS.Sprite:new(
-            new_spectral.slug,
-            SMODS.findModByID("MikasMods").path,
-            new_spectral.slug .. ".png",
-            71,
-            95,
-            "asset_atli"
-        )
-        sprite:register()
+SMODS.Atlas{
+	key = "page_of_pentacles",
+	path = "c_mmc_page_of_pentacles.png",
+	px = 71,
+	py = 95,
+}
+local page_of_pentacles = SMODS.Consumable{
+    key = "page_of_pentacles",
+    set = "Tarot",
+    config = { },
+    pos = {
+        x = 0,
+        y = 0,
+    },
+    cost = 4,
+    atlas = "page_of_pentacles",
+    loc_txt = {
+        name = "Page Of Pentacles",
+        text = {
+            "Multiply",
+            "money by {C:red}-1",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
+        }
+    },
+    unlocked = true,
+    discovered = false,
+    loc_vars = function(self, info_queue, card)
+        return {vars = { }}
+    end,
+    can_use = function(self, card)
+        return true
+    end,
+    use = function(self, card, area, copier)
+        -- Turn money into negative
+        if G.GAME.dollars ~= 0 then
+            delay(0.6)
+            ease_dollars(-G.GAME.dollars * 2)
+        end
     end
-end
+}
 
 local function is_even(card)
     local id = card:get_id()
@@ -4804,295 +4912,27 @@ local function is_fibo(card)
     return id == 2 or id == 3 or id == 5 or id == 8 or id == 14
 end
 
-local function is_prime(card)
-    local id = card:get_id()
-    return id == 2 or id == 3 or id == 5 or id == 7 or id == 14
-end
-
 local function is_face(card)
     local id = card:get_id()
     return id == 11 or id == 12 or id == 13
 end
 
-local function remove_prefix(name, prefix)
-    local start_pos, end_pos = string.find(name, prefix)
-    if start_pos == 1 then
-        return string.sub(name, end_pos + 1)
-    else
-        return name
-    end
-end
-
--- Initialize joker type lists
-local mikas_jokers = {}
-local chips_jokers = {}
-local mult_jokers = {}
-local xmult_jokers = {}
-local money_jokers = {}
-local support_jokers = {}
-
--- Get lists of different joker types
-local function get_mikas_jokers()
-    if next(mikas_jokers) ~= nil then
-        return mikas_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_mmc") and v.rarity ~= 4 then
-            table.insert(mikas_jokers, k)
-        end
-    end
-
-    return mikas_jokers
-end
-
-local function get_chips_jokers()
-    if next(chips_jokers) ~= nil then
-        return chips_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_") and v.rarity ~= 4 then
-            local chips = false
-            for _, v2 in ipairs(G.localization.descriptions.Joker[k].text) do
-                chips = chips or string.find(v2:lower(), "chips")
-            end
-            if chips and v.rarity ~= 4 then
-                table.insert(chips_jokers, k)
-            end
-        end
-    end
-
-    return chips_jokers
-end
-
-local function get_mult_jokers()
-    if next(mult_jokers) ~= nil then
-        return mult_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_") and v.rarity ~= 4 then
-            local mult = false
-            for _, v2 in ipairs(G.localization.descriptions.Joker[k].text) do
-                mult = mult or (string.find(v2:lower(), "mult") and not string.find(v2:lower(), "x"))
-            end
-            if mult or v.ability.name == "Misprint" then
-                table.insert(mult_jokers, k)
-            end
-        end
-    end
-
-    return mult_jokers
-end
-
-local function get_xmult_jokers()
-    if next(xmult_jokers) ~= nil then
-        return xmult_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_") and v.rarity ~= 4 then
-            local xmult = false
-            for _, v2 in ipairs(G.localization.descriptions.Joker[k].text) do
-                xmult = xmult or (string.find(v2:lower(), "mult") and string.find(v2:lower(), "x"))
-            end
-            if xmult then
-                table.insert(xmult_jokers, k)
-            end
-        end
-    end
-
-    return xmult_jokers
-end
-
-local function get_money_jokers()
-    if next(money_jokers) ~= nil then
-        return money_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_") and v.rarity ~= 4 then
-            local money = false
-            for _, v2 in ipairs(G.localization.descriptions.Joker[k].text) do
-                money = money or string.find(v2:lower(), "$")
-            end
-            if money then
-                table.insert(money_jokers, k)
-            end
-        end
-    end
-
-    return money_jokers
-end
-
-local function get_support_jokers()
-    if next(support_jokers) ~= nil then
-        return support_jokers
-    end
-
-    for k, v in pairs(G.P_CENTERS) do
-        if string.find(k, "j_") and v.rarity ~= 4 then
-            local support = true
-            for _, v2 in ipairs(G.localization.descriptions.Joker[k].text) do
-                support = support and
-                    not (string.find(v2:lower(), "chips") or string.find(v2:lower(), "mult" or string.find(v2:lower(), "$")))
-            end
-            if cicero_whitelist[v.ability.name] ~= nil or (support and cicero_blacklist[v.ability.name] == nil) then
-                table.insert(money_jokers, k)
-            end
-        end
-    end
-
-    return support_jokers
-end
-
--- Create Decks
-local decks = {
-    evenStevenDeck = {
-        loc = {
-            name = "Even Steven's Deck",
-            text = {
-                "Start run with only",
-                "{C:attention}even cards{} and",
-                "the {C:attention}Even Steven{} joker"
-            }
-        },
-        name = "Even Steven's Deck",
-        config = {
-            mmc_only_evens = true
-        },
-        sprite = {
-            x = 5,
-            y = 2
-        }
-    },
-    oddToddDeck = {
-        loc = {
-            name = "Odd Todd's Deck",
-            text = {
-                "Start run with only",
-                "{C:attention}odd cards{} and",
-                "the {C:attention}Odd Todd{} joker"
-            }
-        },
-        name = "Odd Todd's Deck",
-        config = {
-            mmc_only_odds = true
-        },
-        sprite = {
-            x = 5,
-            y = 2
-        }
-    },
-    fibonacciDeck = {
-        loc = {
-            name = "Fibonacci Deck",
-            text = {
-                "Start run with only",
-                "{C:attention}Fibonacci cards{} and",
-                "the {C:attention}Fibonacci{} joker"
-            }
-        },
-        name = "Fibonacci Deck",
-        config = {
-            mmc_only_fibo = true
-        },
-        sprite = {
-            x = 5,
-            y = 2
-        }
-    },
-    -- primeDeck = {
-    --     loc = {
-    --         name = "Prime Deck",
-    --         text = {
-    --             "Start run with",
-    --             "only {C:attention}prime cards{} and",
-    --             "the {C:attention}Prime Time{} joker"
-    --         }
-    --     },
-    --     name = "Prime Deck",
-    --     config = {
-    --         mmc_only_prime = true
-    --     },
-    --     sprite = {
-    --         x = 5,
-    --         y = 2
-    --     }
-    -- },
-    midasDeck = {
-        loc = {
-            name = "Midas's Deck",
-            text = {
-                "Start run with only",
-                "{C:attention}Gold Face cards{} and",
-                "the {C:attention}Midas Mask{} joker"
-            }
-        },
-        name = "Midas's Deck",
-        config = {
-            mmc_gold = true
-        },
-        sprite = {
-            x = 6,
-            y = 0
-        }
-    },
-    jokersForHireDeck = {
-        loc = {
-            name = "\"Jokers for Hire\" Deck",
-            text = {
-                "All Jokers give {C:dark_edition}+1{}",
-                "Joker slot. Price of",
-                "{C:attention}Jokers{} and {C:attention}Buffoon Packs",
-                "{C:red}increases{} per Joker"
-            }
-        },
-        name = "Jokers for Hire",
-        config = {
-            mmc_for_hire = true
-        },
-        sprite = {
-            x = 6,
-            y = 0
-        }
-    },
-    perfectPrecisionDeck = {
-        loc = {
-            name = "Perfect Precision Deck",
-            text = {
-                "+1 {C:blue}hands{}, {C:red}discards{} and",
-                "{C:attention}hand size{}. Start with",
-                "a {C:dark_edition}negative {C:attention}The Sniper{}",
-                "Joker. Ante scales {C:attention}X1.5{}",
-                "as fast"
-            }
-        },
-        name = "Perfect Precision",
-        config = {
-            mmc_precision = true,
-            ante_scaling = 1.5,
-            discards = 1,
-            hands = 1,
-            hand_size = 1
-        },
-        sprite = {
-            x = 5,
-            y = 2
-        },
-    }
-}
-
--- Local variables
 local for_hire_counter = 1
 
--- Initialize deck effect
-local Backapply_to_runRef = Back.apply_to_run
-function Back.apply_to_run(arg_56_0)
-    Backapply_to_runRef(arg_56_0)
-
-    if arg_56_0.effect.config.mmc_only_evens then
+SMODS.Back {
+    key = 'evenStevenDeck',
+    loc_txt = {
+        name = "Even Steven's Deck",
+        text = {
+            "Start run with only",
+            "{C:attention}even cards{} and",
+            "the {C:attention}Even Steven{} joker"
+        }
+    },
+    name = "Even Steven's Deck",
+    --atlas = "decks",
+    pos = {x = 5, y = 2},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Loop over all cards
@@ -5111,9 +4951,24 @@ function Back.apply_to_run(arg_56_0)
                 return true
             end
         }))
-    end
+    end,
+    unlocked = true,
+}
 
-    if arg_56_0.effect.config.mmc_only_odds then
+SMODS.Back {
+    key = 'oddToddDeck',
+    loc_txt = {
+        name = "Odd Todd's Deck",
+        text = {
+            "Start run with only",
+            "{C:attention}odd cards{} and",
+            "the {C:attention}Odd Todd{} joker"
+        }
+    },
+    name = "Odd Todd's Deck",
+    --atlas = "decks",
+    pos = {x = 5, y = 2},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Loop over all cards
@@ -5132,9 +4987,24 @@ function Back.apply_to_run(arg_56_0)
                 return true
             end
         }))
-    end
+    end,
+    unlocked = true,
+}
 
-    if arg_56_0.effect.config.mmc_only_fibo then
+SMODS.Back {
+    key = 'fibonacciDeck',
+    loc_txt = {
+        name = "Fibonacci Deck",
+        text = {
+            "Start run with only",
+            "{C:attention}Fibonacci cards{} and",
+            "the {C:attention}Fibonacci{} joker"
+        }
+    },
+    name = "Fibonacci Deck",
+    --atlas = "decks",
+    pos = {x = 5, y = 2},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Loop over all cards
@@ -5153,30 +5023,60 @@ function Back.apply_to_run(arg_56_0)
                 return true
             end
         }))
-    end
+    end,
+    unlocked = true,
+}
 
-    -- if arg_56_0.effect.config.mmc_only_prime then
-    --     G.E_MANAGER:add_event(Event({
-    --         func = function()
-    --             -- Loop over all cards
-    --             for i = #G.playing_cards, 1, -1 do
-    --                 -- Remove non prime cards
-    --                 if not is_prime(G.playing_cards[i]) then
-    --                     G.playing_cards[i]:start_dissolve(nil, true)
-    --                 end
-    --             end
+SMODS.Back {
+    key = 'primeDeck',
+    loc_txt = {
+        name = "Prime Deck",
+        text = {
+            "Start run with",
+            "only {C:attention}prime cards{} and",
+            "the {C:attention}Prime Time{} joker"
+        }
+    },
+    name = "Prime Deck",
+    --atlas = "decks",
+    pos = {x = 5, y = 2},
+    apply = function(self)
+        G.E_MANAGER:add_event(Event({
+            func = function()
+                -- Loop over all cards
+                for i = #G.playing_cards, 1, -1 do
+                    -- Remove non prime cards
+                    if not is_prime(G.playing_cards[i]) then
+                        G.playing_cards[i]:start_dissolve(nil, true)
+                    end
+                end
 
-    --             -- Add Prime Joker
-    --             add_joker("j_mmc_prime_time", nil, true, false)
+                -- Add Prime Joker
+                add_joker("j_mmc_prime_time", nil, true, false)
 
-    --             -- Return
-    --             G.GAME.starting_deck_size = 20
-    --             return true
-    --         end
-    --     }))
-    -- end
+                -- Return
+                G.GAME.starting_deck_size = 20
+                return true
+            end
+        }))
+    end,
+    unlocked = true,
+}
 
-    if arg_56_0.effect.config.mmc_gold then
+SMODS.Back {
+    key = 'midasDeck',
+    loc_txt = {
+        name = "Midas's Deck",
+        text = {
+            "Start run with only",
+            "{C:attention}Gold Face cards{} and",
+            "the {C:attention}Midas Mask{} joker"
+        }
+    },
+    name = "Midas's Deck",
+    --atlas = "decks",
+    pos = {x = 6, y = 0},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Loop over all cards
@@ -5198,9 +5098,25 @@ function Back.apply_to_run(arg_56_0)
                 return true
             end
         }))
-    end
+    end,
+    unlocked = true,
+}
 
-    if arg_56_0.effect.config.mmc_for_hire then
+SMODS.Back {
+    key = 'jokersForHireDeck',
+    loc_txt = {
+        name = "\"Jokers for Hire\" Deck",
+        text = {
+            "All Jokers give {C:dark_edition}+1{}",
+            "Joker slot. Price of",
+            "{C:attention}Jokers{} and {C:attention}Buffoon Packs",
+            "{C:red}increases{} per Joker"
+        }
+    },
+    name = "Jokers for Hire",
+    --atlas = "decks",
+    pos = {x = 6, y = 0},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Set joker slots to 1
@@ -5214,543 +5130,55 @@ function Back.apply_to_run(arg_56_0)
                 return true
             end
         }))
-    end
+    end,
+    unlocked = true,
+}
 
-    if arg_56_0.effect.config.mmc_precision then
+SMODS.Back {
+    key = 'perfectPrecisionDeck',
+    loc_txt = {
+        name = "Perfect Precision Deck",
+        text = {
+            "+1 {C:blue}hands{}, {C:red}discards{} and",
+            "{C:attention}hand size{}. Start with",
+            "a {C:dark_edition}negative {C:attention}The Sniper{}",
+            "Joker. Ante scales {C:attention}X1.5{}",
+            "as fast"
+        }
+    },
+    name = "Perfect Precision",
+    config = {
+        ante_scaling = 1.5,
+        discards = 1,
+        hands = 1,
+        hand_size = 1
+    },
+    --atlas = "decks",
+    pos = {x = 5, y = 2},
+    apply = function(self)
         G.E_MANAGER:add_event(Event({
             func = function()
                 -- Add The Sniper Joker
-                add_joker("j_mmc_sniper", "negative", true, false)
+                add_joker("j_sniper", "negative", true, false)
                 return true
             end
         }))
-    end
-end
+    end,
+    unlocked = true,
+}
 
-function SMODS.INIT.MikasModCollection()
-    -- Localization
-    G.localization.descriptions.Other.card_extra_mult = { text = { "{C:mult}+#1#{} extra Mult" } }
-    G.localization.misc.dictionary.k_mmc_charging = "Charging..."
-    G.localization.misc.dictionary.k_mmc_bonus = "Bonus!"
-    G.localization.misc.dictionary.k_mmc_hand_up = "+ Hand Size!"
-    G.localization.misc.dictionary.k_mmc_hand_down = "- Hand Size!"
-    G.localization.misc.dictionary.k_mmc_tick = "Tick..."
-    G.localization.misc.dictionary.k_mmc_plus_card = "Card!"
-    G.localization.misc.dictionary.k_mmc_luck = "+ Luck!"
-    G.localization.misc.dictionary.k_mmc_destroy = "Destroy!"
+---Localization
+G.localization.descriptions.Other.card_extra_mult = { text = { "{C:mult}+#1#{} extra Mult" } }
+G.localization.misc.dictionary.k_mmc_charging = "Charging..."
+G.localization.misc.dictionary.k_mmc_bonus = "Bonus!"
+G.localization.misc.dictionary.k_mmc_hand_up = "+ Hand Size!"
+G.localization.misc.dictionary.k_mmc_hand_down = "- Hand Size!"
+G.localization.misc.dictionary.k_mmc_tick = "Tick..."
+G.localization.misc.dictionary.k_mmc_plus_card = "Card!"
+G.localization.misc.dictionary.k_mmc_luck = "+ Luck!"
+G.localization.misc.dictionary.k_mmc_destroy = "Destroy!"
 
-    init_localization()
-
-    -- Initialize Decks
-    for k, v in pairs(decks) do
-        if config[k] then
-            local newDeck = SMODS.Deck:new(v.name, k, v.config, v.sprite, v.loc)
-            newDeck:register()
-        end
-    end
-
-    -- Tarot Cards
-    if config.aceOfPentaclesTarot then
-        -- Create Tarot
-        local ace_of_pentacles = {
-            loc = {
-                name = "Ace Of Pentacles",
-                text = {
-                    "{C:red}#2# in #1#{} chance",
-                    "to set money to",
-                    "{C:money}$0{}, otherwise",
-                    "{C:attention}double{} your money",
-                    "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
-                }
-            },
-            ability_name = "MMC Ace Of Pentacles",
-            slug = "mmc_ace_of_pentacles",
-            config = { extra = { odds = 4 } },
-            cost = 4,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(ace_of_pentacles)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_ace_of_pentacles.loc_def(card)
-            return { card.config.extra.odds, "" .. (G.GAME and G.GAME.probabilities.normal or 1) }
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_ace_of_pentacles.can_use(card)
-            return true
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_ace_of_pentacles.use(card, area, copier)
-            if pseudorandom("ace_of_pentacles") < G.GAME.probabilities.normal / card.ability.extra.odds then
-                -- Nope!
-                G.E_MANAGER:add_event(Event({
-                    trigger = "after",
-                    delay = 0.4,
-                    func = function()
-                        attention_text({
-                            text = localize("k_nope_ex"),
-                            scale = 1.3,
-                            hold = 1.4,
-                            major = card,
-                            backdrop_colour = G.C.SECONDARY_SET.Tarot,
-                            align = (G.STATE == G.STATES.TAROT_PACK or G.STATE == G.STATES.SPECTRAL_PACK) and "tm" or
-                                "cm",
-                            offset = { x = 0, y = (G.STATE == G.STATES.TAROT_PACK or G.STATE == G.STATES.SPECTRAL_PACK) and -0.2 or 0 },
-                            silent = true
-                        })
-                        G.E_MANAGER:add_event(Event({
-                            trigger = "after",
-                            delay = 0.06 * G.SETTINGS.GAMESPEED,
-                            blockable = false,
-                            blocking = false,
-                            func = function()
-                                play_sound("tarot2", 0.76, 0.4); return true
-                            end
-                        }))
-                        play_sound("tarot2", 1, 0.4)
-                        card:juice_up(0.3, 0.5)
-                        ease_dollars(-G.GAME.dollars)
-                        return true
-                    end
-                }))
-                delay(0.6)
-            else
-                -- Double money
-                delay(0.6)
-                ease_dollars(G.GAME.dollars)
-            end
-        end
-    end
-
-    if config.pageOfPentaclesTarot then
-        -- Create Tarot
-        local page_of_pentacles = {
-            loc = {
-                name = "Page Of Pentacles",
-                text = {
-                    "Multiply",
-                    "money by {C:red}-1",
-                    "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
-                }
-            },
-            ability_name = "MMC Page Of Pentacles",
-            slug = "mmc_page_of_pentacles",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(page_of_pentacles)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_page_of_pentacles.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_page_of_pentacles.can_use(card)
-            return true
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_page_of_pentacles.use(card, area, copier)
-            -- Turn money into negative
-            if G.GAME.dollars ~= 0 then
-                delay(0.6)
-                ease_dollars(-G.GAME.dollars * 2)
-            end
-        end
-    end
-
-    if config.kingOfCupsTarot then
-        -- Create Tarot
-        local king_of_cups = {
-            loc = {
-                name = "King Of Cups",
-                text = {
-                    "Create a random",
-                    "{X:mikas,C:white}Mika's-Mod{} Joker"
-                }
-            },
-            ability_name = "MMC King Of Cups",
-            slug = "mmc_king_of_cups",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(king_of_cups, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_king_of_cups.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_king_of_cups.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_king_of_cups.use(card, area, copier)
-            -- Add random Mika's Mod Joker
-            local joker_list = get_mikas_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("king_of_cups"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.chipsTarot then
-        -- Create Tarot
-        local chips = {
-            loc = {
-                name = "Chips",
-                text = {
-                    "Get a random Chips Joker"
-                }
-            },
-            ability_name = "MMC Chips",
-            slug = "mmc_chips",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(chips, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_chips.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_chips.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_chips.use(card, area, copier)
-            -- Add random Chips Joker
-            local joker_list = get_chips_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("chips"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.multTarot then
-        -- Create Tarot
-        local mult = {
-            loc = {
-                name = "Mult",
-                text = {
-                    "Get a random Mult Joker"
-                }
-            },
-            ability_name = "MMC Mult",
-            slug = "mmc_mult",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(mult, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_mult.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_mult.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_mult.use(card, area, copier)
-            -- Add random Mult Joker
-            local joker_list = get_mult_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("mult"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.moneyTarot then
-        -- Create Tarot
-        local xmult = {
-            loc = {
-                name = "XMult",
-                text = {
-                    "Get a random XMult Joker"
-                }
-            },
-            ability_name = "MMC Xmult",
-            slug = "mmc_xmult",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(xmult, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_xmult.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_xmult.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_xmult.use(card, area, copier)
-            -- Add random XMult Joker
-            local joker_list = get_xmult_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("xmult"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.moneyTarot then
-        -- Create Tarot
-        local money = {
-            loc = {
-                name = "Money",
-                text = {
-                    "Get a random Money Joker"
-                }
-            },
-            ability_name = "MMC Money",
-            slug = "mmc_money",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(money, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_money.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_money.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_money.use(card, area, copier)
-            -- Add random money Joker
-            local joker_list = get_money_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("money"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.supportTarot then
-        -- Create Tarot
-        local support = {
-            loc = {
-                name = "Support",
-                text = {
-                    "Get a random Support Joker",
-                    "(Not Chips, Mult or Money)"
-                }
-            },
-            ability_name = "MMC Support",
-            slug = "mmc_support",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(support, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_support.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_support.can_use(card)
-            return G.jokers.config.card_limit > #G.jokers.cards
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_support.use(card, area, copier)
-            -- Add random support Joker
-            local joker_list = get_support_jokers()
-            local joker = pseudorandom_element(joker_list, pseudoseed("support"))
-            add_joker(joker, nil, true, false)
-        end
-    end
-
-    if config.cardChipsTarot then
-        -- Create Tarot
-        local card_chips = {
-            loc = {
-                name = "Card Chips",
-                text = {
-                    "3 Random cards gain",
-                    "+25 chips permenantly"
-                }
-            },
-            ability_name = "MMC Card Chips",
-            slug = "mmc_card_chips",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(card_chips, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_card_chips.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_card_chips.can_use(card)
-            return true
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_card_chips.use(card, area, copier)
-
-        end
-    end
-
-    if config.cardMultTarot then
-        -- Create Tarot
-        local card_mult = {
-            loc = {
-                name = "Card Mult",
-                text = {
-                    "3 Random cards gain",
-                    "+5 Mult permenantly"
-                }
-            },
-            ability_name = "MMC Card Mult",
-            slug = "mmc_card_mult",
-            config = {},
-            cost = 1,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Tarot
-        init_tarot(card_mult, true)
-
-        -- Set local variables
-        function SMODS.Tarots.c_mmc_card_mult.loc_def(card)
-            return {}
-        end
-
-        -- Set can_use
-        function SMODS.Tarots.c_mmc_card_mult.can_use(card)
-            return true
-        end
-
-        -- Use effect
-        function SMODS.Tarots.c_mmc_card_mult.use(card, area, copier)
-
-        end
-    end
-
-    -- Spectral Cards
-    if config.incenseSpectral then
-        -- Create Spectral
-        local incense = {
-            loc = {
-                name = "Incense",
-                text = {
-                    "Add {C:dark_edition}Negative{} to",
-                    "a random {C:attention}Joker{},",
-                    "{C:red}-$#1#{}, ignores",
-                    "spending limit",
-                    "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
-                }
-            },
-            ability_name = "MMC Incense",
-            slug = "mmc_incense",
-            config = { extra = { dollars = 50, j_slots = 1, increase = 25 } },
-            cost = 4,
-            cost_mult = 1,
-            discovered = false
-        }
-
-        -- Initialize Spectral
-        init_spectral(incense)
-
-        -- Set local variables
-        function SMODS.Spectrals.c_mmc_incense.loc_def(card)
-            return { G.GAME.mmc_incense_cost or card.config.extra.dollars, card.config.extra.j_slots }
-        end
-
-        -- Set can_use
-        function SMODS.Spectrals.c_mmc_incense.can_use(card)
-            for _, v in pairs(G.jokers.cards) do
-                if v.ability.set == "Joker" and (not v.edition) then
-                    return true
-                end
-            end
-            return false
-        end
-
-        -- Use effect
-        function SMODS.Spectrals.c_mmc_incense.use(card, area, copier)
-            -- Get cost
-            G.GAME.mmc_incense_cost = G.GAME.mmc_incense_cost or card.ability.extra.dollars
-            -- Get editionless Jokers
-            local editionless_jokers = {}
-            for _, v in pairs(G.jokers.cards) do
-                if v.ability.set == "Joker" and (not v.edition) then
-                    table.insert(editionless_jokers, v)
-                end
-            end
-            -- Add negative to random Joker
-            if #editionless_jokers > 0 then
-                G.E_MANAGER:add_event(Event({
-                    trigger = "after",
-                    delay = 0.4,
-                    func = function()
-                        -- Set joker edition
-                        local joker = pseudorandom_element(editionless_jokers, pseudoseed("incense"))
-                        ease_dollars(-G.GAME.mmc_incense_cost)
-                        card:juice_up(0.3, 0.5)
-                        joker:set_edition({ negative = true }, true)
-                        -- Change Cost
-                        G.GAME.mmc_incense_cost = G.GAME.mmc_incense_cost + card.ability.extra.increase
-                        return true
-                    end
-                }))
-            end
-            delay(0.6)
-        end
-    end
-end
+init_localization()
 
 -- Stretch card back of odd shaped Jokers
 local flip_ref = Card.flip
@@ -5820,17 +5248,17 @@ end
 
 -- Handle cost increase
 local set_costref = Card.set_cost
-function Card.set_cost(self)
+function Card:set_cost()
     set_costref(self)
 
     if self.ability.name == "eye_chart" and not self.added_to_deck then
         -- Generate new letter
         self.ability.extra.letter = string.upper(pseudorandom_element(letters, pseudoseed("eye_chart")))
     end
-
     if G.GAME.starting_params.mmc_for_hire and
         (self.ability.set == "Joker" or string.find(self.ability.name, "Buffoon")) then
         -- Multiply cost linearly with counter
+        print(for_hire_counter)
         self.cost = self.cost * for_hire_counter
 
         if self.ability.name == "Riff-raff" then
@@ -5842,7 +5270,7 @@ end
 
 -- Set card edition
 local set_edition_ref = Card.set_edition
-function Card.set_edition(self, edition, immediate, silent)
+function Card:set_edition(self, edition, immediate, silent)
     set_edition_ref(self, edition, immediate, silent)
     if G.jokers then
         if not self.added_to_deck and self.ability.set == "Joker" and (self.edition == nil or not edition.negative) then
@@ -5879,7 +5307,7 @@ end
 
 -- Handle end of round card effects
 local get_end_of_round_effectref = Card.get_end_of_round_effect
-function Card.get_end_of_round_effect(self, context)
+function Card:get_end_of_round_effect(self, context)
     -- Call base function
     local ret = get_end_of_round_effectref(self, context)
 
@@ -5910,7 +5338,7 @@ end
 
 local get_chip_mult_ref = Card.get_chip_mult
 function Card:get_chip_mult()
-    if self.ability.perma_mult then
+    if self.ability.perma_mult and self.ability.name ~= "Lucky Card" then
         return self.ability.mult + self.ability.perma_mult
     end
     return get_chip_mult_ref(self)

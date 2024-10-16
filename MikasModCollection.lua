@@ -490,14 +490,14 @@ local fisherman = SMODS.Joker{
 	calculate = function(self, card, context)
         -- Decrease hand size
         if context.joker_main then
- --         if card.ability.extra.current_h_size > 0 then
-            card.ability.extra.current_h_size = card.ability.extra.current_h_size - card.ability.extra.h_mod
-            G.hand:change_size(-card.ability.extra.h_mod)
-            -- Decrease message
-            card_eval_status_text(card, "extra", nil, nil, nil, {
-                message = localize("k_mmc_hand_down")
-            })
---          end
+            --if card.ability.extra.current_h_size > 0 then
+                card.ability.extra.current_h_size = card.ability.extra.current_h_size - card.ability.extra.h_mod
+                G.hand:change_size(-card.ability.extra.h_mod)
+                -- Decrease message
+                card_eval_status_text(card, "extra", nil, nil, nil, {
+                    message = localize("k_mmc_hand_down")
+                })
+            --end
         end
 
         -- Increase hand size
@@ -1024,7 +1024,7 @@ local showoff = SMODS.Joker{
 
         -- See if total scored chips > 2 * blind chips, then increment xmult
         if context.end_of_round and not context.individual and not context.repetition and not context.blueprint then
-            if card.ability.extra.total_chips > (card.ability.extra.req * G.GAME.blind.chips) then
+            if card.ability.extra.total_chips > (card.ability.extra.req * to_number(G.GAME.blind.chips)) then
                 card.ability.extra.current_Xmult = card.ability.extra.current_Xmult + card.ability.extra.Xmult_mod
 
                 card_eval_status_text(card, "extra", nil, nil, nil, {
@@ -1098,7 +1098,7 @@ local sniper = SMODS.Joker{
 
         -- See if total scored chips == blind chips, then increment xmult
         if context.end_of_round and not context.individual and not context.repetition and not context.blueprint then
-            if card.ability.extra.total_chips <= G.GAME.blind.chips * (1 + card.ability.extra.percentage / 100) then
+            if card.ability.extra.total_chips <= to_number(G.GAME.blind.chips) * (1 + card.ability.extra.percentage / 100) then
                 card.ability.extra.current_Xmult = card.ability.extra.current_Xmult + card.ability.extra.Xmult_mod
 
                 card_eval_status_text(card, "extra", nil, nil, nil, {
@@ -2109,7 +2109,6 @@ local abbey_road = SMODS.Joker{
                     end
                 end
             end
-
             -- If any count is higher than req, apply mult
             for _, v in pairs(card.ability.extra.hand_equal_count) do
                 if v >= card.ability.extra.req then
@@ -2121,6 +2120,7 @@ local abbey_road = SMODS.Joker{
         -- Apply Xmult
         if context.joker_main then
             if card.ability.extra.should_trigger then
+                card.ability.extra.should_trigger = false
                 return {
                     message = localize {
                         type = "variable",
@@ -5342,6 +5342,12 @@ function Card:get_chip_mult()
         return self.ability.mult + self.ability.perma_mult
     end
     return get_chip_mult_ref(self)
+end
+
+local mod_path = SMODS.current_mod.path
+-- JokerDisplay mod support
+if _G["JokerDisplay"] then
+	NFS.load(mod_path .. "Jokers_Definitions.lua")()
 end
 
 ----------------------------------------------

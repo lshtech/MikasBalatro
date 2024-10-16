@@ -380,3 +380,162 @@ jd_def['j_mika_glue'] = {
     end
 }
 
+jd_def['j_mika_special_edition'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.joker_display_values", ref_value = "chips", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.CHIPS },
+    calc_function = function(card)
+        local chips = 0
+        if G.jokers then
+            for _,v in pairs(G.jokers.cards) do
+                if v.config.center.rarity == 1 then
+                    chips = chips + card.ability.extra.chips
+                end
+            end
+        end
+        card.joker_display_values.chips = chips
+    end
+}
+
+jd_def['j_mika_special_edition'] = {
+    text = {
+        { text = "+",                              colour = G.C.CHIPS },
+        { ref_table = "card.ability.extra", ref_value = "current_chips", colour = G.C.CHIPS, retrigger_type = "mult" },
+        { text = " +",                             colour = G.C.MULT },
+        { ref_table = "card.ability.extra", ref_value = "current_mult",  colour = G.C.MULT,  retrigger_type = "mult" },
+        { text = " " },
+        {
+            border_nodes = {
+                { text = 'X'},
+                { ref_table = 'card.ability.extra', ref_value = 'current_Xmult', retrigger_type = 'exp' },
+            }
+        }
+    }
+}
+
+jd_def['j_mika_stockpiler'] = {
+    text = {
+        { ref_table = "card.joker_display_values", ref_value = "localized_text" }
+    },
+    text_config = { colour = G.C.WHITE },
+    calc_function = function(card)
+        card.joker_display_values.localized_text = "+" .. card.ability.extra.current_h_size .. " Hand Size"
+    end
+}
+
+jd_def['j_mika_student_loans'] = {
+    text = {
+        { ref_table = "card.joker_display_values", ref_value = "localized_text" }
+    },
+    text_config = { colour = G.C.WHITE },
+    calc_function = function(card)
+        card.joker_display_values.localized_text = card.ability.extra.discards .. " Discards"
+    end
+}
+
+jd_def['j_mika_broke'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.ability.extra", ref_value = "current_mult", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.MULT }
+}
+
+jd_def['j_mika_go_for_broke'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.ability.extra", ref_value = "current_chips", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.CHIPS },
+}
+
+jd_def['j_mika_street_fighter'] = {
+    text = {
+        {
+            border_nodes = {
+                { text = 'X'},
+                { ref_table = 'card.ability.extra', ref_value = 'Xmult', retrigger_type = 'exp' },
+            }
+        }
+    },
+}
+
+jd_def["j_mika_checklist"] = { -- Impractical Joker
+    reminder_text = {
+        { text = '(' },
+        { ref_table = "card.joker_display_values", ref_value = "localized_text", colour = G.C.ORANGE },
+        { text = ')' },
+    },
+    calc_function = function(card)
+        card.joker_display_values.localized_text = localize(card.ability.extra.poker_hand or 'High Card', "poker_hands")
+    end,
+}
+
+jd_def['j_mika_tax_collector'] = {
+    text = {
+        { text = "+$" },
+        { ref_table = 'card.joker_display_values', ref_value = "dollars" },
+    },
+    text_config = { colour = G.C.GOLD },
+    calc_function = function(card)
+        local dollars = 0
+        if G.jokers then
+            for _,v in pairs(G.jokers.cards) do
+                if v.config.center.rarity == 2 then
+                    dollars = dollars + (card.ability.extra.dollars * 1)
+                elseif v.config.center.rarity == 3 then
+                    dollars = dollars + (card.ability.extra.dollars * 2)
+                elseif v.config.center.rarity == 4 then
+                    dollars = dollars + (card.ability.extra.dollars * 4)
+                end
+            end
+        end
+        card.joker_display_values.dollars = dollars
+    end
+}
+
+jd_def['j_mika_savings'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.ability.extra", ref_value = "current_mult", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.MULT }
+}
+
+jd_def['j_mika_monopolist'] = {
+    text = {
+        {
+            border_nodes = {
+                { text = 'X'},
+                { ref_table = 'card.ability.extra', ref_value = 'current_Xmult', retrigger_type = 'exp' },
+            }
+        }
+    },
+}
+
+jd_def['j_mika_nebula'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.joker_display_values", ref_value = "mult", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.MULT },
+    calc_function = function(card)
+        local mult = 0
+        for _, v in ipairs(G.handlist) do
+            if G.GAME.hands[v].visible and G.GAME.hands[v].level > card.ability.extra.req then
+                mult = mult + G.GAME.hands[v].level - card.ability.extra.req
+            end
+        end
+        card.joker_display_values.mult = mult
+    end
+}
+
+jd_def['j_mika_psychic'] = {
+    text = {
+        { text = "+" },
+        { ref_table = "card.ability.extra", ref_value = "chips", retrigger_type = "mult" }
+    },
+    text_config = { colour = G.C.CHIPS },
+}

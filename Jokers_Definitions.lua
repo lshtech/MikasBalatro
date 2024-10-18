@@ -99,7 +99,7 @@ jd_def['j_mika_scratch_card'] = {
     end
 }
 
-jd_def['j_mika_delayed'] = {
+jd_def['j_mika_deli_ticket'] = {
     text = {
         { text = "+",                              colour = G.C.CHIPS },
         { ref_table = "card.joker_display_values", ref_value = "chips", colour = G.C.CHIPS, retrigger_type = "mult" },
@@ -131,7 +131,7 @@ jd_def['j_mika_delayed'] = {
     end
 }
 
-jd_def['j_mika_showoff'] = {
+jd_def['j_mika_joker_of_the_month'] = {
     text = {
         {
             border_nodes = {
@@ -504,7 +504,7 @@ jd_def['j_mika_savings'] = {
     text_config = { colour = G.C.MULT }
 }
 
-jd_def['j_mika_monopolist'] = {
+jd_def['j_mika_title_deed'] = {
     text = {
         {
             border_nodes = {

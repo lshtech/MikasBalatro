@@ -350,7 +350,7 @@ local prime_time = SMODS.Joker{
             "Each played {C:attention}2{},",
             "{C:attention}3{}, {C:attention}5{}, {C:attention}7{} or {C:attention}Ace{}, gives",
             "{X:mult,C:white}X#1#{} Mult when scored",
-            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Gappie"
         }
 	},
 	rarity = 1,
@@ -698,7 +698,8 @@ local seal_collector = SMODS.Joker{
         text = {
             "Gains {C:chips}+#2#{} Chips for",
             "every card with a {C:attention}seal",
-            "{C:inactive}(Currently {C:chips}+#1#{C:inactive} Chips)"
+            "{C:inactive}(Currently {C:chips}+#1#{C:inactive} Chips)",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Gappie"
         }
 	},
 	rarity = 1,
@@ -869,14 +870,14 @@ local scratch_card = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "delayed",
-	path = "j_mmc_delayed.png",
+	key = "deli_ticket",
+	path = "j_mmc_deli_ticket.png",
 	px = 71,
 	py = 95,
 }
-local delayed = SMODS.Joker{
-	name = "delayed",
-	key = "delayed",
+local deli_ticket = SMODS.Joker{
+	name = "deli_ticket",
+	key = "deli_ticket",
 	config = {
         extra = {
             mult = 20,
@@ -888,12 +889,13 @@ local delayed = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "Delayed Joker",
+        name = "Deli Ticket",
         text = {
             "Gives {C:mult}+#1#{} Mult, {C:chips}+#2#{}",
             "Chips and {X:mult,C:white}X#3#{} Mult on",
             "the {C:attention}#5#th{} action",
-            "{C:inactive}(Current action: {C:attention}#4#{C:inactive} )"
+            "{C:inactive}(Current action: {C:attention}#4#{C:inactive} )",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 2,
@@ -901,7 +903,7 @@ local delayed = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = true,
-	atlas = "delayed",
+	atlas = "deli_ticket",
 	loc_vars = function(self, info_queue, center)
 		return { vars = {
             center.ability.extra.mult,
@@ -966,14 +968,14 @@ local delayed = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "showoff",
-	path = "j_mmc_showoff.png",
+	key = "joker_of_the_month",
+	path = "j_mmc_joker_of_the_month.png",
 	px = 71,
 	py = 95,
 }
 local showoff = SMODS.Joker{
-	name = "showoff",
-	key = "showoff",
+	name = "joker_of_the_month",
+	key = "joker_of_the_month",
 	config = {
         extra = {
             current_Xmult = 1,
@@ -984,12 +986,13 @@ local showoff = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "The Show-Off",
+        name = "Joker of the Month",
         text = {
             "Gains {X:mult,C:white}X#2#{} Mult when",
             "a blind is finished with",
             "{C:attention}X#3#{} the chip requirement",
-            "{C:inactive}(Currently {X:mult,C:white}X#1#{C:inactive} Mult)"
+            "{C:inactive}(Currently {X:mult,C:white}X#1#{C:inactive} Mult)",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -997,7 +1000,7 @@ local showoff = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = true,
-	atlas = "showoff",
+	atlas = "joker_of_the_month",
 	loc_vars = function(self, info_queue, center)
 		return { vars = { center.ability.extra.current_Xmult, center.ability.extra.Xmult_mod, center.ability.extra.req } }
 	end,
@@ -1445,14 +1448,14 @@ local eye_chart = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "grudgeful",
-	path = "j_mmc_grudgeful.png",
+	key = "insect_specimen",
+	path = "j_mmc_insect_specimen.png",
 	px = 71,
 	py = 95,
 }
-local grudgeful = SMODS.Joker{
-	name = "grudgeful",
-	key = "grudgeful",
+local insect_specimen = SMODS.Joker{
+	name = "insect_specimen",
+	key = "insect_specimen",
 	config = {
         extra = {
             current_chips = 0,
@@ -1463,13 +1466,14 @@ local grudgeful = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "Grudgeful Joker",
+        name = "Insect Specimen",
         text = {
             "Lowers blind requirement",
             "with {C:attention}excess Chips{} from",
             "last round. Caps at {C:attention}#2#%",
             "of current blind's Chips",
-            "{C:inactive}(Currently {C:chips}+#1#{C:inactive} Chips)"
+            "{C:inactive}(Currently {C:chips}+#1#{C:inactive} Chips)",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -1477,7 +1481,7 @@ local grudgeful = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = true,
-	atlas = "grudgeful",
+	atlas = "insect_specimen",
 	loc_vars = function(self, info_queue, center)
 		return { vars = { center.ability.extra.current_chips, center.ability.extra.percentage } }
 	end,
@@ -1797,14 +1801,14 @@ local suit_alley = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "printer",
-	path = "j_mmc_printer.png",
+	key = "test_print",
+	path = "j_mmc_test_print.png",
 	px = 71,
 	py = 95,
 }
-local printer = SMODS.Joker{
-	name = "printer",
-	key = "printer",
+local test_print = SMODS.Joker{
+	name = "test_print",
+	key = "test_print",
 	config = {
         extra = {
             hand = {}
@@ -1812,11 +1816,12 @@ local printer = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "The Printer",
+        name = "Test Print",
         text = {
             "If hand scores more than",
             "blind's Chips, {C:attention}duplicate{}",
-            "played cards"
+            "played cards",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -1824,7 +1829,7 @@ local printer = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = false,
-	atlas = "printer",
+	atlas = "test_print",
 	loc_vars = function(self, info_queue, center)
 		return { vars = { } }
 	end,
@@ -2366,23 +2371,24 @@ local rigged = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "commander",
-	path = "j_mmc_commander.png",
+	key = "sticker_sheet",
+	path = "j_mmc_sticker_sheet.png",
 	px = 71,
 	py = 95,
 }
-local commander = SMODS.Joker{
-	name = "commander",
-	key = "commander",
+local sticker_sheet = SMODS.Joker{
+	name = "sticker_sheet",
+	key = "sticker_sheet",
 	config = { extra = { req = 1 } },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "The Commander",
+        name = "Sticker Sheet",
         text = {
             "If {C:attention}first hand{} of round",
             "has only {C:attention}#1#{} card, give it a",
             "random {C:attention}Enhancement{}, {C:attention}Seal",
-            "and {C:attention}Edition"
+            "and {C:attention}Edition",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -2390,7 +2396,7 @@ local commander = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = false,
-	atlas = "commander",
+	atlas = "sticker_sheet",
 	loc_vars = function(self, info_queue, center)
 		return { vars = { center.ability.extra.req } }
 	end,
@@ -3172,7 +3178,8 @@ local go_for_broke = SMODS.Joker{
         text = {
             "Gains {C:chips}+#1#{} Chips",
             "per {C:red}-$#3#",
-            "{C:inactive}(Currently {C:chips}#2#{C:inactive} Chips)"
+            "{C:inactive}(Currently {C:chips}#2#{C:inactive} Chips)",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Wam"
         }
 	},
 	rarity = 1,
@@ -3328,7 +3335,8 @@ local checklist = SMODS.Joker{
             "Playing {C:attention}#1#{} upgrades",
             "it by #2# level,",
             "poker hand changes",
-            "at end of round"
+            "at end of round",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Gappie"
         }
 	},
 	rarity = 2,
@@ -3398,7 +3406,8 @@ local one_of_us = SMODS.Joker{
             "If played hand",
             "contains {C:attention}#1# Enhanced cards,",
             "give a random Joker",
-            "a random {C:attention}Edition"
+            "a random {C:attention}Edition",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Gappie"
         }
 	},
 	rarity = 2,
@@ -4279,7 +4288,8 @@ local savings = SMODS.Joker{
             "{C:mult}+#1#{} Mult per round",
             "Resets when",
             "buying a {C:attention}card",
-            "{C:inactive}(Currently {C:mult}+#2#{C:inactive} Mult)"
+            "{C:inactive}(Currently {C:mult}+#2#{C:inactive} Mult)",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Flowr"
         }
 	},
 	rarity = 2,
@@ -4336,14 +4346,14 @@ local savings = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "monopolist",
-	path = "j_mmc_monopolist.png",
+	key = "title_deed",
+	path = "j_mmc_title_deed.png",
 	px = 71,
 	py = 95,
 }
-local monopolist = SMODS.Joker{
-	name = "monopolist",
-	key = "monopolist",
+local title_deed = SMODS.Joker{
+	name = "title_deed",
+	key = "title_deed",
 	config = {
         extra = {
             current_Xmult = 1,
@@ -4354,12 +4364,13 @@ local monopolist = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "Monopolist",
+        name = "Title Deed",
         text = {
             "{X:mult,C:white}X#1#{} Mult, gains",
             "{X:mult,C:white}X#2#{} Mult at {C:money}$#3#{},",
             "requirement doubles",
-            "when met"
+            "when met",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -4367,7 +4378,7 @@ local monopolist = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = true,
-	atlas = "monopolist",
+	atlas = "title_deed",
 	loc_vars = function(self, info_queue, center)
 		return { vars = {
             center.ability.extra.current_Xmult,
@@ -4456,7 +4467,8 @@ local nebula = SMODS.Joker{
         text = {
             "Adds all {C:attention}poker",
             "{C:attention}hand{} levels above",
-            "#1# to {C:mult}Mult"
+            "#1# to {C:mult}Mult",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Gappie"
         }
 	},
 	rarity = 1,
@@ -4647,14 +4659,14 @@ local cheat = SMODS.Joker{
 }
 
 SMODS.Atlas{
-	key = "plus_one",
-	path = "j_mmc_plus_one.png",
+	key = "gym_membership",
+	path = "j_mmc_gym_membership.png",
 	px = 71,
 	py = 95,
 }
-local plus_one = SMODS.Joker{
-	name = "plus_one",
-	key = "plus_one",
+local gym_membership = SMODS.Joker{
+	name = "gym_membership",
+	key = "gym_membership",
 	config = {
         extra = {
             increase = 1
@@ -4662,12 +4674,13 @@ local plus_one = SMODS.Joker{
     },
 	pos = { x = 0, y = 0 },
 	loc_txt = {
-        name = "Plus One",
+        name = "Gym Membership",
         text = {
             "Increases rank",
             "of scored cards by",
             "{C:attention}#1#{} on the {C:attention}first",
-            "{C:attention}hand{} of round"
+            "{C:attention}hand{} of round",
+            "{C:inactive}Art by {C:green,E:1,S:1.1}Grassy"
         }
 	},
 	rarity = 3,
@@ -4675,7 +4688,7 @@ local plus_one = SMODS.Joker{
     unlocked = true,
     discovered = false,
 	blueprint_compat = false,
-	atlas = "plus_one",
+	atlas = "gym_membership",
 	loc_vars = function(self, info_queue, center)
 		return { vars = { center.ability.extra.increase } }
 	end,

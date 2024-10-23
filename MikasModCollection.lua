@@ -5267,7 +5267,6 @@ end
 local set_costref = Card.set_cost
 function Card:set_cost()
     set_costref(self)
-    print(type(G.GAME.starting_params.mmc_for_hire) .. " | " .. tostring(G.GAME.starting_params.mmc_for_hire))
     if G.GAME.starting_params.mmc_for_hire and
         (self.ability.set == "Joker" or string.find(self.ability.name, "Buffoon")) then
         -- Multiply cost linearly with counter

@@ -4207,20 +4207,6 @@ local cicero = SMODS.Joker{
 		return { vars = { } }
 	end,
 	calculate = function(self, card, context)
-        -- For each played card, if card is prime, add xmult
-        if context.individual and context.cardarea == G.play and
-            (context.other_card:get_id() == 2 or context.other_card:get_id() == 3 or context.other_card:get_id() ==
-                5 or context.other_card:get_id() == 7 or context.other_card:get_id() == 14) then
-            return {
-                message = localize {
-                    type = "variable",
-                    key = "a_xmult",
-                    vars = { card.ability.extra.Xmult }
-                },
-                x_mult = card.ability.extra.Xmult,
-                card = card
-            }
-        end
 	end,
 }
 

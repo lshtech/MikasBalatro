@@ -1096,7 +1096,7 @@ local sniper = SMODS.Joker{
 
         -- Add scored chips to total
         if context.mmc_scored_chips and not context.blueprint then
-            card.ability.extra.total_chips = card.ability.extra.total_chips + context.mmc_scored_chips
+            card.ability.extra.total_chips = to_number(card.ability.extra.total_chips) + to_number(context.mmc_scored_chips)
         end
 
         -- See if total scored chips == blind chips, then increment xmult

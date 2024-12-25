@@ -5295,7 +5295,7 @@ function G.FUNCS.evaluate_play(self, e)
         local effects = eval_card(G.jokers.cards[i], {
             card = G.consumeables,
             after = true,
-            mmc_scored_chips = hand_chips * mult
+            mmc_scored_chips = (hand_chips or 0) * mult
         })
         if effects.jokers then
             card_eval_status_text(G.jokers.cards[i], "jokers", nil, 0.3, nil, effects.jokers)

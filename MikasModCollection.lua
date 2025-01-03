@@ -11,6 +11,13 @@
 
 -- TODO: Fishing License, Harp Seal, Buy One Get One -- increase mod compat
 
+local function to_number(x)
+    if type(x) == 'table' and x.to_number then
+        return x:to_number()
+    end
+    return x
+end
+
 function SMODS.poll_enhancement(args)
     args = args or {}
     local key = args.key or 'stdenhance'

@@ -5352,7 +5352,7 @@ end
 local mod_path = SMODS.current_mod.path
 -- JokerDisplay mod support
 if _G["JokerDisplay"] then
-	NFS.load(mod_path .. "Jokers_Definitions.lua")()
+	SMODS.load_file(mod_path .. "Jokers_Definitions.lua")()
 end
 
 ----------------------------------------------
